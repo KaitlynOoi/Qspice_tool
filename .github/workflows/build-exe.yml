@@ -27,13 +27,6 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Show installed versions
-        working-directory: app
-        shell: pwsh
-        run: |
-          python -c "import sys; print('Python:', sys.version)"
-          python -c "import importlib.metadata as m; print('spicelib:', m.version('spicelib'))"
-
       - name: Build app
         working-directory: app
         shell: pwsh
