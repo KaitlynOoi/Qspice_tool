@@ -20,6 +20,20 @@ from spicelib.editor.asc_editor import AscEditor
 from spicelib.editor.qsch_editor import QschEditor, QschTag
 from spicelib.utils.file_search import find_file_in_directory
 
+def _patch_spicelib_updated():
+    try:
+        import spicelib.editor.base_schematic as bs
+        cls = getattr(bs, "SpiceCircuit", None)
+        if cls is not None and not hasattr(cls, "updated"):
+            def updated(self):
+                if hasattr(self, "was_modified"):
+                    self.was_modified = True
+            cls.updated = updated
+    except Exception:
+        pass
+
+_patch_spicelib_updated()
+
 _logger = logging.getLogger("spicelib.AscToQschFixed")
 
 
