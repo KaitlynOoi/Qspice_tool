@@ -14,6 +14,9 @@ This file is what PyInstaller packages into the .exe.
 import os
 import sys
 import traceback
+import difflib
+import shutil
+from pathlib import Path
 
 
 def _fatal_error_box(title, exc):
@@ -27,6 +30,39 @@ def _fatal_error_box(title, exc):
     except Exception:
         print(f"{title}: {exc}")
         traceback.print_exc()
+
+
+def _build_intermediate_paths(final_qsch: str) -> tuple[str, str]:
+    """Return (step1_path, diff_path) for the requested final output file."""
+    final_path = Path(final_qsch)
+    step1_path = final_path.with_name(f"{final_path.stem}.step1.qsch")
+    diff_path = final_path.with_name(f"{final_path.stem}.diff.txt")
+    return str(step1_path), str(diff_path)
+
+
+def _write_qsch_diff(step1_qsch: str, final_qsch: str, diff_path: str) -> int:
+    """Write a unified diff between the raw conversion and the final fixed file."""
+    try:
+        step1_lines = Path(step1_qsch).read_text(encoding='cp1252', errors='replace').splitlines(keepends=True)
+        final_lines = Path(final_qsch).read_text(encoding='cp1252', errors='replace').splitlines(keepends=True)
+    except Exception:
+        return 0
+
+    diff = list(
+        difflib.unified_diff(
+            step1_lines,
+            final_lines,
+            fromfile=os.path.basename(step1_qsch),
+            tofile=os.path.basename(final_qsch),
+        )
+    )
+    try:
+        Path(diff_path).write_text(''.join(diff), encoding='utf-8')
+    except Exception:
+        return 0
+    return len(diff)
+
+
 
 
 def run_gui():
@@ -181,18 +217,29 @@ def run_gui():
             messagebox.showerror("Missing file", "Please select an output .qsch file.", parent=root)
             return
 
+        step1_qsch_file, diff_file = _build_intermediate_paths(qsch_file)
+
+        # Clean up any old intermediate files from a previous run so the comparison is clear.
+        for old_path in (step1_qsch_file, diff_file):
+            try:
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+            except OSError:
+                pass
+
         log_text.delete("1.0", tk.END)
         log("=" * 60)
-        log("STEP 1/2: Converting .asc -> .qsch")
+        log("STEP 1/2: Converting .asc -> intermediate .qsch")
         log("=" * 60)
-        log(f"ASC:  {asc_file}")
-        log(f"QSCH: {qsch_file}")
+        log(f"ASC:         {asc_file}")
+        log(f"Step 1 .QSCH: {step1_qsch_file}")
+        log(f"Final .QSCH:  {qsch_file}")
         log("")
 
         try:
             step1.convert_asc_to_qsch(
                 asc_file,
-                qsch_file,
+                step1_qsch_file,
                 search_paths=step1._normalize_paths(custom_paths),
                 log=log,
             )
@@ -202,9 +249,18 @@ def run_gui():
             messagebox.showerror("Conversion failed", str(exc), parent=root)
             return
 
+        # Copy the raw converted file to the final target first, then step 2 edits that copy.
+        try:
+            shutil.copy2(step1_qsch_file, qsch_file)
+        except Exception as exc:
+            log("")
+            log(f"ERROR copying intermediate output to final file: {exc}")
+            messagebox.showerror("Copy failed", str(exc), parent=root)
+            return
+
         log("")
         log("=" * 60)
-        log("STEP 2/2: Fixing & importing missing models into the .qsch")
+        log("STEP 2/2: Fixing & importing missing models into the final .qsch")
         log("=" * 60)
         log("")
 
@@ -233,11 +289,29 @@ def run_gui():
             messagebox.showerror("Model fix-up failed", str(exc), parent=root)
             return
 
+        diff_lines = _write_qsch_diff(step1_qsch_file, qsch_file, diff_file)
+        if diff_lines > 0:
+            log("")
+            log("=" * 60)
+            log("COMPARE RESULT")
+            log("=" * 60)
+            log(f"Saved raw conversion: {step1_qsch_file}")
+            log(f"Saved final output:   {qsch_file}")
+            log(f"Saved diff report:     {diff_file}")
+            log(f"Diff lines written:    {diff_lines}")
+        else:
+            log("")
+            log("No diff report was written (or the files could not be compared).")
+
         log("")
         log("=" * 60)
         log("ALL DONE.")
         log("=" * 60)
-        messagebox.showinfo("Done", f"Finished!\nSaved: {qsch_file}", parent=root)
+        messagebox.showinfo(
+            "Done",
+            f"Finished!\nSaved final: {qsch_file}\nSaved step 1: {step1_qsch_file}",
+            parent=root,
+        )
 
     action_row = ttk.Frame(main)
     action_row.grid(row=3, column=0, sticky="w", pady=(10, 0))
