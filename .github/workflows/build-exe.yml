@@ -2,8 +2,8 @@ name: Build Windows EXE
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches: ["main"]
+  workflow_dispatch: {}
 
 jobs:
   build:
@@ -25,12 +25,12 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Build the .exe with PyInstaller
+      - name: Build the app with PyInstaller
         working-directory: app
-        run: python -m PyInstaller --onefile --noconsole --name "LTspiceToQSpiceTools" combined_app.py
+        run: python -m PyInstaller --onedir --noconsole --name "LTspiceToQSpiceTools" --collect-all spicelib combined_app.py
 
-      - name: Upload the built .exe
+      - name: Upload the built app folder
         uses: actions/upload-artifact@v4
         with:
-          name: LTspiceToQSpiceTools-windows-exe
-          path: app/dist/*.exe
+          name: LTspiceToQSpiceTools-windows-onedir
+          path: app/dist/LTspiceToQSpiceTools
