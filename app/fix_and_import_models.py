@@ -21,6 +21,20 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple
 
+def _patch_spicelib_updated():
+    try:
+        import spicelib.editor.base_schematic as bs
+        cls = getattr(bs, "SpiceCircuit", None)
+        if cls is not None and not hasattr(cls, "updated"):
+            def updated(self):
+                if hasattr(self, "was_modified"):
+                    self.was_modified = True
+            cls.updated = updated
+    except Exception:
+        pass
+
+_patch_spicelib_updated()
+
 BUILTIN_PRIMITIVES = {
     "res", "cap", "ind", "voltage", "current", "diode", "schottky",
     "npn", "pnp", "nmos", "pmos", "zener", "polcap", "1n4148", "2n2222"
