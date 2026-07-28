@@ -1,2 +1,2 @@
-spicelib>=1.4
-pyinstaller>=6.0
+spicelib==1.6.3
+pyinstaller==6.15.0
