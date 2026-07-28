@@ -2,15 +2,16 @@ name: Build Windows EXE
 
 on:
   push:
-    branches: ["main"]
-  workflow_dispatch: {}
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      - name: Check out the repo
+      - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -20,17 +21,33 @@ jobs:
 
       - name: Install dependencies
         working-directory: app
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Build the app with PyInstaller
+      - name: Show installed versions
         working-directory: app
-        run: python -m PyInstaller --onedir --noconsole --name "LTspiceToQSpiceTools" --collect-all spicelib combined_app.py
+        shell: pwsh
+        run: |
+          python -c "import sys; print('Python:', sys.version)"
+          python -c "import spicelib; print('spicelib:', spicelib.__version__)"
 
-      - name: Upload the built app folder
+      - name: Build app
+        working-directory: app
+        shell: pwsh
+        run: |
+          python -m PyInstaller `
+            --onedir `
+            --noconsole `
+            --clean `
+            --name LTspiceToQSpiceTools `
+            --collect-all spicelib `
+            combined_app.py
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LTspiceToQSpiceTools-windows-onedir
+          name: LTspiceToQSpiceTools-windows
           path: app/dist/LTspiceToQSpiceTools
