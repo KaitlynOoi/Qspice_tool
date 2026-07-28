@@ -243,20 +243,20 @@ def run_gui():
                 search_paths=step1._normalize_paths(custom_paths),
                 log=log,
             )
-       except Exception:
-    import traceback
+        except Exception:
+            import traceback
 
-    tb = traceback.format_exc()
+            tb = traceback.format_exc()
 
-    log("")
-    log(tb)
+            log("")
+            log(tb)
 
-    messagebox.showerror(
-        "Conversion failed",
-        tb,
-        parent=root
-    )
-    return
+            messagebox.showerror(
+                "Conversion failed",
+                tb,
+                parent=root,
+            )
+            return
 
         # Copy the raw converted file to the final target first, then step 2 edits that copy.
         try:
