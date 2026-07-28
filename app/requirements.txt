@@ -1,2 +1,2 @@
-spicelib==1.6.3
+spicelib==<known-working-version>
 pyinstaller==6.15.0
